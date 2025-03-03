@@ -1,0 +1,67 @@
+{
+    "program": {
+      "instructions": [
+        {
+          "operator": "LD",
+          "operand": "X1",
+          "modifier": null
+        },
+        {
+          "operator": "AND",
+          "operand": "X2",
+          "modifier": null
+        },
+        {
+          "operator": "ORN",
+          "operand": "X3",
+          "modifier": null
+        },
+        {
+          "operator": "ST",
+          "operand": "Y1",
+          "modifier": null
+        },
+        {
+          "operator": "LD",
+          "operand": "X1",
+          "modifier": null
+        },
+        {
+          "operator": "OR",
+          "operand": "X2",
+          "modifier": null
+        },
+        {
+          "operator": "AND",
+          "operand": "X3",
+          "modifier": null
+        },
+        {
+          "operator": "TON",
+          "operand": "T#5s",
+          "modifier": null
+        },
+        {
+          "operator": "ST",
+          "operand": "Y2",
+          "modifier": null
+        },
+        {
+          "operator": "LD",
+          "operand": "X1",
+          "modifier": null
+        },
+        {
+          "operator": "CTU",
+          "operand": "10",
+          "modifier": null
+        },
+        {
+          "operator": "ST",
+          "operand": "Y3",
+          "modifier": null
+        }
+      ]
+    }
+  }
+  

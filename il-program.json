@@ -1,0 +1,10 @@
+{
+  "program": {
+    "instructions": [
+      { "operator": "LD", "operand": "X1", "modifier": null },
+      { "operator": "AND", "operand": "X2", "modifier": null },
+      { "operator": "OR", "operand": "X3", "modifier": null },
+      { "operator": "ST", "operand": "Y1", "modifier": null }
+    ]
+  }
+}
