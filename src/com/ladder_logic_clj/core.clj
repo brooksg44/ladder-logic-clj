@@ -36,26 +36,31 @@
        (str/join \newline errors)))
 
 (defn validate-args
-   "Validate command line arguments"
-   [args]
-   (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
-     (cond
-       (:help options)
-       {:exit-message (usage summary) :ok? true}
+  "Validate command line arguments"
+  [args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    #_(println "DEBUG: Parsed options:" options) ;; Add debugging
+    #_(println "DEBUG: Parsed arguments:" arguments)
+    #_(println "DEBUG: Errors:" errors)
+    (cond
+      (:help options)
+      {:exit-message (usage summary) :ok? true}
 
-       errors
-       {:exit-message (error-msg errors)}
+      errors
+      {:exit-message (error-msg errors)}
 
-       (and (:input options) (:output options) (:convert options))
-       (if (contains? #{"il2ld" "ld2il"} (:convert options))
-         {:options options :mode :convert}
-         {:exit-message "Error: Convert type must be 'il2ld' or 'ld2il'"}))
+      ;; Conversion mode: requires -i, -o, and -c
+      (and (:input options) (:output options) (:convert options))
+      (if (contains? #{"il2ld" "ld2il"} (:convert options))
+        {:options options :mode :convert}
+        {:exit-message "Error: Convert type must be 'il2ld' or 'ld2il'"})
 
-     (:simulate options)
-     {:options options :mode :simulate}
+      ;; Simulation mode: requires -s
+      (:simulate options)
+      {:options options :mode :simulate}
 
-     :else
-     {:exit-message (usage summary)}))
+      :else
+      {:exit-message (usage summary)})))
 
 (defn exit [status msg]
   (println msg)
