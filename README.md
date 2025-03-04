@@ -36,6 +36,7 @@ ladder-logic-clj/
 
 ## This is currently not working:
 ```Clojure
+
 (defn usage [options-summary]
   (->> ["LadderLogicClj - IL to LD Converter and Simulator"
         ""
