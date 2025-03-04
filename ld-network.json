@@ -1,1 +1,185 @@
-{"id":"f7964973-51c1-46eb-9b00-c89259983ea6","elements":[{"type":"contact","id":"a079b90d-2b79-4a02-9ebf-6cc9233c27fb","position":{"x":1,"y":1},"inputs":[{"id":"in"}],"outputs":[{"id":"out"}],"properties":{"variable":"X1"}},{"type":"contact","id":"7fbfb751-493b-48d0-a2bb-b2c71a794f99","position":{"x":3,"y":1},"inputs":[{"id":"in"}],"outputs":[{"id":"out"}],"properties":{"variable":"X2"}},{"type":"and","id":"458262ce-bfd3-4c77-aeb4-60447c31bc8a","position":{"x":5,"y":1},"inputs":[{"id":"in1"},{"id":"in2"}],"outputs":[{"id":"out"}],"properties":{}},{"type":"contact","id":"fa632794-7d18-4153-8205-35d469abc5de","position":{"x":7,"y":1},"inputs":[{"id":"in"}],"outputs":[{"id":"out"}],"properties":{"variable":"X3"}},{"type":"or","id":"173294aa-1a45-48da-be1f-6462962f6890","position":{"x":9,"y":1},"inputs":[{"id":"in1"},{"id":"in2"}],"outputs":[{"id":"out"}],"properties":{}},{"type":"coil","id":"6f19a72f-1818-4e7b-9016-74c129dc915f","position":{"x":11,"y":1},"inputs":[{"id":"in"}],"outputs":[{"id":"out"}],"properties":{"variable":"Y1"}}],"connections":[{"source":{"element":"a079b90d-2b79-4a02-9ebf-6cc9233c27fb","port":"out"},"target":{"element":"458262ce-bfd3-4c77-aeb4-60447c31bc8a","port":"in1"}},{"source":{"element":"7fbfb751-493b-48d0-a2bb-b2c71a794f99","port":"out"},"target":{"element":"458262ce-bfd3-4c77-aeb4-60447c31bc8a","port":"in2"}},{"source":{"element":"458262ce-bfd3-4c77-aeb4-60447c31bc8a","port":"out"},"target":{"element":"173294aa-1a45-48da-be1f-6462962f6890","port":"in1"}},{"source":{"element":"fa632794-7d18-4153-8205-35d469abc5de","port":"out"},"target":{"element":"173294aa-1a45-48da-be1f-6462962f6890","port":"in2"}},{"source":{"element":"173294aa-1a45-48da-be1f-6462962f6890","port":"out"},"target":{"element":"6f19a72f-1818-4e7b-9016-74c129dc915f","port":"in"}}]}
+{
+    "id": "a7f033ec-4d0c-47c8-a3a7-6833ca2b0056",
+    "elements": [
+        {
+            "type": "contact",
+            "id": "b24d6b21-b2be-4b99-a297-7dd55df66f68",
+            "position": {
+                "x": 1,
+                "y": 1
+            },
+            "inputs": [
+                {
+                    "id": "in"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "out"
+                }
+            ],
+            "properties": {
+                "variable": "X1"
+            }
+        },
+        {
+            "type": "contact",
+            "id": "e2f4510d-b6ad-4ab6-86f8-c6084320fd97",
+            "position": {
+                "x": 3,
+                "y": 1
+            },
+            "inputs": [
+                {
+                    "id": "in"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "out"
+                }
+            ],
+            "properties": {
+                "variable": "X2"
+            }
+        },
+        {
+            "type": "and",
+            "id": "20b57e56-f2f2-40fe-9297-5970d60bb914",
+            "position": {
+                "x": 5,
+                "y": 1
+            },
+            "inputs": [
+                {
+                    "id": "in1"
+                },
+                {
+                    "id": "in2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "out"
+                }
+            ],
+            "properties": {}
+        },
+        {
+            "type": "contact",
+            "id": "0f10aad9-de94-4989-b6be-56f13341b57e",
+            "position": {
+                "x": 7,
+                "y": 1
+            },
+            "inputs": [
+                {
+                    "id": "in"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "out"
+                }
+            ],
+            "properties": {
+                "variable": "X3"
+            }
+        },
+        {
+            "type": "or",
+            "id": "867f885e-dc6d-4467-b674-4af74ed3e3fa",
+            "position": {
+                "x": 9,
+                "y": 1
+            },
+            "inputs": [
+                {
+                    "id": "in1"
+                },
+                {
+                    "id": "in2"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "out"
+                }
+            ],
+            "properties": {}
+        },
+        {
+            "type": "coil",
+            "id": "00e56f10-339a-4dbd-a379-5f32a55dd496",
+            "position": {
+                "x": 11,
+                "y": 1
+            },
+            "inputs": [
+                {
+                    "id": "in"
+                }
+            ],
+            "outputs": [
+                {
+                    "id": "out"
+                }
+            ],
+            "properties": {
+                "variable": "Y1"
+            }
+        }
+    ],
+    "connections": [
+        {
+            "source": {
+                "element": "b24d6b21-b2be-4b99-a297-7dd55df66f68",
+                "port": "out"
+            },
+            "target": {
+                "element": "20b57e56-f2f2-40fe-9297-5970d60bb914",
+                "port": "in1"
+            }
+        },
+        {
+            "source": {
+                "element": "e2f4510d-b6ad-4ab6-86f8-c6084320fd97",
+                "port": "out"
+            },
+            "target": {
+                "element": "20b57e56-f2f2-40fe-9297-5970d60bb914",
+                "port": "in2"
+            }
+        },
+        {
+            "source": {
+                "element": "20b57e56-f2f2-40fe-9297-5970d60bb914",
+                "port": "out"
+            },
+            "target": {
+                "element": "867f885e-dc6d-4467-b674-4af74ed3e3fa",
+                "port": "in1"
+            }
+        },
+        {
+            "source": {
+                "element": "0f10aad9-de94-4989-b6be-56f13341b57e",
+                "port": "out"
+            },
+            "target": {
+                "element": "867f885e-dc6d-4467-b674-4af74ed3e3fa",
+                "port": "in2"
+            }
+        },
+        {
+            "source": {
+                "element": "867f885e-dc6d-4467-b674-4af74ed3e3fa",
+                "port": "out"
+            },
+            "target": {
+                "element": "00e56f10-339a-4dbd-a379-5f32a55dd496",
+                "port": "in"
+            }
+        }
+    ]
+}
