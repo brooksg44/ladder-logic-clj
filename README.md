@@ -34,6 +34,23 @@ ladder-logic-clj/
         └── sample_ld.json   # Sample LD network
 ```
 
+## This is currently not working:
+```Clojure
+(defn usage [options-summary]
+  (->> ["LadderLogicClj - IL to LD Converter and Simulator"
+        ""
+        "Usage: clj -M:run [options]"
+        ""
+        "Options:"
+        options-summary
+        ""
+        "Examples:"
+        "  Convert IL to LD:  clj -M:run -i input.json -o output.json -c il2ld"
+        "  Convert LD to IL:  clj -M:run -i input.json -o output.json -c ld2il"
+        "  Simulate LD:       clj -M:run -s ladder.json"]
+       (str/join \newline)))
+```
+
 ## Installation
 
 Clone the repository:
