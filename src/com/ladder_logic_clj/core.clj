@@ -3,6 +3,8 @@
   (:require [clojure.tools.cli :refer [parse-opts]]
             [clojure.string :as str]
             [clojure.data.json :as json]
+            [clojure.spec.alpha :as s]
+            [com.ladder-logic-clj.specs :as specs]
             [com.ladder-logic-clj.parser :as parser]
             [com.ladder-logic-clj.converter :as converter]
             [com.ladder-logic-clj.simulator :as simulator])
@@ -15,6 +17,8 @@
    ["-o" "--output FILE" "Output file"]
    ["-c" "--convert TYPE" "Conversion type (il2ld or ld2il)"]
    ["-s" "--simulate FILE" "Simulate LD network from file"]
+   ["-v" "--visual" "Enable graphical visualization"]
+   ["-e" "--export FILE" "Export LD diagram to image file"]
    ["-h" "--help"]])
 
 (defn usage [options-summary]
@@ -26,9 +30,11 @@
         options-summary
         ""
         "Examples:"
-        "  Convert IL to LD:  clj -M:run -i input.json -o output.json -c il2ld"
-        "  Convert LD to IL:  clj -M:run -i input.json -o output.json -c ld2il"
-        "  Simulate LD:       clj -M:run -s ladder.json"]
+        "  Convert IL to LD:    clj -M:run -i input.json -o output.json -c il2ld"
+        "  Convert LD to IL:    clj -M:run -i input.json -o output.json -c ld2il"
+        "  Simulate LD:         clj -M:run -s ladder.json"
+        "  Visual Simulation:   clj -M:run -s ladder.json -v"
+        "  Export LD Diagram:   clj -M:run -s ladder.json -e diagram.png"]
        (str/join \newline)))
 
 (defn error-msg [errors]
@@ -57,9 +63,18 @@
 
       ;; Simulation mode: requires -s
       (:simulate options)
-      {:options options :mode :simulate}
+      (cond
+        ;; Export mode: requires -s and -e
+        (:export options)
+        {:options options :mode :export}
 
-      :else
+        ;; Visual simulation: requires -s and -v
+        (:visual options)
+        {:options options :mode :visual-simulate}
+
+        ;; Regular simulation: just -s
+        :else
+        {:options options :mode :simulate}):else
       {:exit-message (usage summary)})))
 
 (defn exit [status msg]
@@ -94,6 +109,34 @@
     (println "Starting simulation of LD network from" ld-file)
     (simulator/run-interactive-simulation ld-network)))
 
+(defn run-visual-simulation
+  "Run a simulation of the LD network with graphical visualization"
+  [options]
+  (let [ld-file (:simulate options)
+        ld-network (converter/load-ld-from-file ld-file)]
+
+    (println "Starting visual simulation of LD network from" ld-file)
+    (simulator/run-interactive-simulation ld-network :with-visualization true)))
+
+(defn export-ld-diagram
+  "Export the LD network as an image"
+  [options]
+  (let [ld-file (:simulate options)
+        export-file (:export options)
+        ld-network (converter/load-ld-from-file ld-file)
+        variables (atom (simulator/initialize-variables))
+        state-map (atom {})]
+
+    (println "Exporting LD network from" ld-file "to" export-file)
+    
+    ;; Import the renderer namespace
+    (require '[com.ladder-logic-clj.renderer :as renderer])
+    
+    ;; Call export function
+    ((resolve 'renderer/export-network-as-image) ld-network variables state-map export-file)
+    
+    (println "Export complete")))
+
 (defn -main
   "Main entry point"
   [& args]
@@ -102,6 +145,8 @@
       (exit (if ok? 0 1) exit-message)
       (case mode
         :simulate (run-simulation options)
+        :visual-simulate (run-visual-simulation options)
+        :export (export-ld-diagram options)
         :convert (convert-file options)
         (exit 1 "Unknown mode")))))
 

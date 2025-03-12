@@ -2,13 +2,36 @@
   "Provides functions for converting between IL and LD formats"
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
+            [clojure.spec.alpha :as s]
+            [com.ladder-logic-clj.specs :as specs]
             [com.ladder-logic-clj.parser :as parser]))
 
 ;; LD element structure
-(defrecord LDElement [type id position inputs outputs properties])
+(defrecord LDElement [type id position inputs outputs properties]
+  Object
+  (toString [this]
+    (str "#LDElement{:type \"" type "\", :id \"" id "\", :position " position "}")))
 
 ;; LD Network structure
-(defrecord LDNetwork [id elements connections])
+(defrecord LDNetwork [id elements connections]
+  Object
+  (toString [this]
+    (str "#LDNetwork{:id \"" id "\", :elements-count " (count elements)
+         ", :connections-count " (count connections) "}")))
+
+;; Function to validate LDElement against specs
+(defn validate-element [element]
+  (if (s/valid? ::specs/element element)
+    element
+    (throw (ex-info "Invalid LD element"
+                    (s/explain-data ::specs/element element)))))
+
+;; Function to validate LDNetwork against specs
+(defn validate-network [network]
+  (if (s/valid? ::specs/network network)
+    network
+    (throw (ex-info "Invalid LD network"
+                    (s/explain-data ::specs/network network)))))
 
 ;; ---- Helper Functions ----
 
@@ -20,35 +43,38 @@
 (defn create-contact
   "Create a contact element for LD"
   [operand negated? position]
-  (->LDElement 
+  (validate-element
+   (->LDElement
     (if negated? "contact_negated" "contact")
     (generate-unique-id)
     position
     [{:id "in"}]
     [{:id "out"}]
-    {:variable operand}))
+    {:variable operand})))
 
 (defn create-coil
   "Create a coil element for LD"
   [operand negated? position]
-  (->LDElement 
+  (validate-element
+   (->LDElement
     (if negated? "coil_negated" "coil")
     (generate-unique-id)
     position
     [{:id "in"}]
     [{:id "out"}]
-    {:variable operand}))
+    {:variable operand})))
 
 (defn create-function-block
   "Create a function block element for LD"
   [type position inputs outputs properties]
-  (->LDElement 
+  (validate-element
+   (->LDElement
     type
     (generate-unique-id)
     position
     inputs
     outputs
-    properties))
+    properties)))
 
 ;; ---- IL to LD Conversion ----
 
@@ -61,7 +87,7 @@
          current-node nil
          position {:x 1 :y 1}]
     (if (empty? instructions)
-      (->LDNetwork (generate-unique-id) elements connections)
+      (validate-network (->LDNetwork (generate-unique-id) elements connections))
       (let [instr (first instructions)
             operator (:operator instr)
             operand (:operand instr)
@@ -73,14 +99,14 @@
                         connections
                         new-element
                         (update position :x + 2)))
-          
+
           "LDN" (let [new-element (create-contact operand true position)]
                   (recur (rest instructions)
                          (conj elements new-element)
                          connections
                          new-element
                          (update position :x + 2)))
-          
+
           "ST" (let [new-element (create-coil operand false position)]
                  (recur (rest instructions)
                         (conj elements new-element)
@@ -90,7 +116,7 @@
                           connections)
                         nil
                         (update position :x + 2)))
-          
+
           "STN" (let [new-element (create-coil operand true position)]
                   (recur (rest instructions)
                          (conj elements new-element)
@@ -100,17 +126,17 @@
                            connections)
                          nil
                          (update position :x + 2)))
-          
+
           "AND" (let [new-element (create-contact operand false position)
-                      and-block (create-function-block "and" 
-                                                     (update position :x + 2) 
-                                                     [{:id "in1"} {:id "in2"}]
-                                                     [{:id "out"}]
-                                                     {})]
+                      and-block (create-function-block "and"
+                                                       (update position :x + 2)
+                                                       [{:id "in1"} {:id "in2"}]
+                                                       [{:id "out"}]
+                                                       {})]
                   (recur (rest instructions)
                          (conj elements new-element and-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id and-block) :port "in1"}}
                                  {:source {:element (:id new-element) :port "out"}
@@ -118,17 +144,17 @@
                            connections)
                          and-block
                          (update position :x + 4)))
-          
+
           "ANDN" (let [new-element (create-contact operand true position)
-                       and-block (create-function-block "and" 
-                                                      (update position :x + 2) 
-                                                      [{:id "in1"} {:id "in2"}]
-                                                      [{:id "out"}]
-                                                      {})]
+                       and-block (create-function-block "and"
+                                                        (update position :x + 2)
+                                                        [{:id "in1"} {:id "in2"}]
+                                                        [{:id "out"}]
+                                                        {})]
                    (recur (rest instructions)
                           (conj elements new-element and-block)
                           (if current-node
-                            (conj connections 
+                            (conj connections
                                   {:source {:element (:id current-node) :port "out"}
                                    :target {:element (:id and-block) :port "in1"}}
                                   {:source {:element (:id new-element) :port "out"}
@@ -136,17 +162,17 @@
                             connections)
                           and-block
                           (update position :x + 4)))
-          
+
           "OR" (let [new-element (create-contact operand false position)
-                     or-block (create-function-block "or" 
-                                                   (update position :x + 2) 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {})]
+                     or-block (create-function-block "or"
+                                                     (update position :x + 2)
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {})]
                  (recur (rest instructions)
                         (conj elements new-element or-block)
                         (if current-node
-                          (conj connections 
+                          (conj connections
                                 {:source {:element (:id current-node) :port "out"}
                                  :target {:element (:id or-block) :port "in1"}}
                                 {:source {:element (:id new-element) :port "out"}
@@ -154,17 +180,17 @@
                           connections)
                         or-block
                         (update position :x + 4)))
-          
+
           "ORN" (let [new-element (create-contact operand true position)
-                      or-block (create-function-block "or" 
-                                                    (update position :x + 2) 
-                                                    [{:id "in1"} {:id "in2"}]
-                                                    [{:id "out"}]
-                                                    {})]
+                      or-block (create-function-block "or"
+                                                      (update position :x + 2)
+                                                      [{:id "in1"} {:id "in2"}]
+                                                      [{:id "out"}]
+                                                      {})]
                   (recur (rest instructions)
                          (conj elements new-element or-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id or-block) :port "in1"}}
                                  {:source {:element (:id new-element) :port "out"}
@@ -172,236 +198,236 @@
                            connections)
                          or-block
                          (update position :x + 4)))
-          
-          "NOT" (let [not-block (create-function-block "not" 
-                                                     position 
-                                                     [{:id "in"}]
-                                                     [{:id "out"}]
-                                                     {})]
+
+          "NOT" (let [not-block (create-function-block "not"
+                                                       position
+                                                       [{:id "in"}]
+                                                       [{:id "out"}]
+                                                       {})]
                   (recur (rest instructions)
                          (conj elements not-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id not-block) :port "in"}})
                            connections)
                          not-block
                          (update position :x + 2)))
-          
+
           ;; Timer functions
-          "TON" (let [timer-block (create-function-block "timer_on" 
-                                                       position 
-                                                       [{:id "in"} {:id "preset"}]
-                                                       [{:id "q"} {:id "et"}]
-                                                       {:preset (or operand "T#1s")})]
+          "TON" (let [timer-block (create-function-block "timer_on"
+                                                         position
+                                                         [{:id "in"} {:id "preset"}]
+                                                         [{:id "q"} {:id "et"}]
+                                                         {:preset (or operand "T#1s")})]
                   (recur (rest instructions)
                          (conj elements timer-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id timer-block) :port "in"}})
                            connections)
                          timer-block
                          (update position :x + 3)))
-          
-          "TOF" (let [timer-block (create-function-block "timer_off" 
-                                                       position 
-                                                       [{:id "in"} {:id "preset"}]
-                                                       [{:id "q"} {:id "et"}]
-                                                       {:preset (or operand "T#1s")})]
+
+          "TOF" (let [timer-block (create-function-block "timer_off"
+                                                         position
+                                                         [{:id "in"} {:id "preset"}]
+                                                         [{:id "q"} {:id "et"}]
+                                                         {:preset (or operand "T#1s")})]
                   (recur (rest instructions)
                          (conj elements timer-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id timer-block) :port "in"}})
                            connections)
                          timer-block
                          (update position :x + 3)))
-          
+
           ;; Counter functions
-          "CTU" (let [counter-block (create-function-block "counter_up" 
-                                                         position 
-                                                         [{:id "cu"} {:id "r"} {:id "pv"}]
-                                                         [{:id "q"} {:id "cv"}]
-                                                         {:preset (or operand "10")})]
+          "CTU" (let [counter-block (create-function-block "counter_up"
+                                                           position
+                                                           [{:id "cu"} {:id "r"} {:id "pv"}]
+                                                           [{:id "q"} {:id "cv"}]
+                                                           {:preset (or operand "10")})]
                   (recur (rest instructions)
                          (conj elements counter-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id counter-block) :port "cu"}})
                            connections)
                          counter-block
                          (update position :x + 3)))
-          
-          "CTD" (let [counter-block (create-function-block "counter_down" 
-                                                         position 
-                                                         [{:id "cd"} {:id "ld"} {:id "pv"}]
-                                                         [{:id "q"} {:id "cv"}]
-                                                         {:preset (or operand "10")})]
+
+          "CTD" (let [counter-block (create-function-block "counter_down"
+                                                           position
+                                                           [{:id "cd"} {:id "ld"} {:id "pv"}]
+                                                           [{:id "q"} {:id "cv"}]
+                                                           {:preset (or operand "10")})]
                   (recur (rest instructions)
                          (conj elements counter-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id counter-block) :port "cd"}})
                            connections)
                          counter-block
                          (update position :x + 3)))
-          
+
           ;; Math functions
-          "ADD" (let [add-block (create-function-block "add" 
-                                                     position 
-                                                     [{:id "in1"} {:id "in2"}]
-                                                     [{:id "out"}]
-                                                     {:operand operand})]
+          "ADD" (let [add-block (create-function-block "add"
+                                                       position
+                                                       [{:id "in1"} {:id "in2"}]
+                                                       [{:id "out"}]
+                                                       {:operand operand})]
                   (recur (rest instructions)
                          (conj elements add-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id add-block) :port "in1"}})
                            connections)
                          add-block
                          (update position :x + 3)))
-          
-          "SUB" (let [sub-block (create-function-block "subtract" 
-                                                     position 
-                                                     [{:id "in1"} {:id "in2"}]
-                                                     [{:id "out"}]
-                                                     {:operand operand})]
+
+          "SUB" (let [sub-block (create-function-block "subtract"
+                                                       position
+                                                       [{:id "in1"} {:id "in2"}]
+                                                       [{:id "out"}]
+                                                       {:operand operand})]
                   (recur (rest instructions)
                          (conj elements sub-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id sub-block) :port "in1"}})
                            connections)
                          sub-block
                          (update position :x + 3)))
-          
-          "MUL" (let [mul-block (create-function-block "multiply" 
-                                                     position 
-                                                     [{:id "in1"} {:id "in2"}]
-                                                     [{:id "out"}]
-                                                     {:operand operand})]
+
+          "MUL" (let [mul-block (create-function-block "multiply"
+                                                       position
+                                                       [{:id "in1"} {:id "in2"}]
+                                                       [{:id "out"}]
+                                                       {:operand operand})]
                   (recur (rest instructions)
                          (conj elements mul-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id mul-block) :port "in1"}})
                            connections)
                          mul-block
                          (update position :x + 3)))
-          
-          "DIV" (let [div-block (create-function-block "divide" 
-                                                     position 
-                                                     [{:id "in1"} {:id "in2"}]
-                                                     [{:id "out"}]
-                                                     {:operand operand})]
+
+          "DIV" (let [div-block (create-function-block "divide"
+                                                       position
+                                                       [{:id "in1"} {:id "in2"}]
+                                                       [{:id "out"}]
+                                                       {:operand operand})]
                   (recur (rest instructions)
                          (conj elements div-block)
                          (if current-node
-                           (conj connections 
+                           (conj connections
                                  {:source {:element (:id current-node) :port "out"}
                                   :target {:element (:id div-block) :port "in1"}})
                            connections)
                          div-block
                          (update position :x + 3)))
-          
+
           ;; Comparison functions
-          "GT" (let [gt-block (create-function-block "greater_than" 
-                                                   position 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {:operand operand})]
-                (recur (rest instructions)
-                       (conj elements gt-block)
-                       (if current-node
-                         (conj connections 
-                               {:source {:element (:id current-node) :port "out"}
-                                :target {:element (:id gt-block) :port "in1"}})
-                         connections)
-                       gt-block
-                       (update position :x + 3)))
-          
-          "GE" (let [ge-block (create-function-block "greater_equal" 
-                                                   position 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {:operand operand})]
-                (recur (rest instructions)
-                       (conj elements ge-block)
-                       (if current-node
-                         (conj connections 
-                               {:source {:element (:id current-node) :port "out"}
-                                :target {:element (:id ge-block) :port "in1"}})
-                         connections)
-                       ge-block
-                       (update position :x + 3)))
-          
-          "EQ" (let [eq-block (create-function-block "equal" 
-                                                   position 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {:operand operand})]
-                (recur (rest instructions)
-                       (conj elements eq-block)
-                       (if current-node
-                         (conj connections 
-                               {:source {:element (:id current-node) :port "out"}
-                                :target {:element (:id eq-block) :port "in1"}})
-                         connections)
-                       eq-block
-                       (update position :x + 3)))
-          
-          "NE" (let [ne-block (create-function-block "not_equal" 
-                                                   position 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {:operand operand})]
-                (recur (rest instructions)
-                       (conj elements ne-block)
-                       (if current-node
-                         (conj connections 
-                               {:source {:element (:id current-node) :port "out"}
-                                :target {:element (:id ne-block) :port "in1"}})
-                         connections)
-                       ne-block
-                       (update position :x + 3)))
-          
-          "LE" (let [le-block (create-function-block "less_equal" 
-                                                   position 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {:operand operand})]
-                (recur (rest instructions)
-                       (conj elements le-block)
-                       (if current-node
-                         (conj connections 
-                               {:source {:element (:id current-node) :port "out"}
-                                :target {:element (:id le-block) :port "in1"}})
-                         connections)
-                       le-block
-                       (update position :x + 3)))
-          
-          "LT" (let [lt-block (create-function-block "less_than" 
-                                                   position 
-                                                   [{:id "in1"} {:id "in2"}]
-                                                   [{:id "out"}]
-                                                   {:operand operand})]
-                (recur (rest instructions)
-                       (conj elements lt-block)
-                       (if current-node
-                         (conj connections 
-                               {:source {:element (:id current-node) :port "out"}
-                                :target {:element (:id lt-block) :port "in1"}})
-                         connections)
-                       lt-block
-                       (update position :x + 3)))
-          
+          "GT" (let [gt-block (create-function-block "greater_than"
+                                                     position
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {:operand operand})]
+                 (recur (rest instructions)
+                        (conj elements gt-block)
+                        (if current-node
+                          (conj connections
+                                {:source {:element (:id current-node) :port "out"}
+                                 :target {:element (:id gt-block) :port "in1"}})
+                          connections)
+                        gt-block
+                        (update position :x + 3)))
+
+          "GE" (let [ge-block (create-function-block "greater_equal"
+                                                     position
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {:operand operand})]
+                 (recur (rest instructions)
+                        (conj elements ge-block)
+                        (if current-node
+                          (conj connections
+                                {:source {:element (:id current-node) :port "out"}
+                                 :target {:element (:id ge-block) :port "in1"}})
+                          connections)
+                        ge-block
+                        (update position :x + 3)))
+
+          "EQ" (let [eq-block (create-function-block "equal"
+                                                     position
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {:operand operand})]
+                 (recur (rest instructions)
+                        (conj elements eq-block)
+                        (if current-node
+                          (conj connections
+                                {:source {:element (:id current-node) :port "out"}
+                                 :target {:element (:id eq-block) :port "in1"}})
+                          connections)
+                        eq-block
+                        (update position :x + 3)))
+
+          "NE" (let [ne-block (create-function-block "not_equal"
+                                                     position
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {:operand operand})]
+                 (recur (rest instructions)
+                        (conj elements ne-block)
+                        (if current-node
+                          (conj connections
+                                {:source {:element (:id current-node) :port "out"}
+                                 :target {:element (:id ne-block) :port "in1"}})
+                          connections)
+                        ne-block
+                        (update position :x + 3)))
+
+          "LE" (let [le-block (create-function-block "less_equal"
+                                                     position
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {:operand operand})]
+                 (recur (rest instructions)
+                        (conj elements le-block)
+                        (if current-node
+                          (conj connections
+                                {:source {:element (:id current-node) :port "out"}
+                                 :target {:element (:id le-block) :port "in1"}})
+                          connections)
+                        le-block
+                        (update position :x + 3)))
+
+          "LT" (let [lt-block (create-function-block "less_than"
+                                                     position
+                                                     [{:id "in1"} {:id "in2"}]
+                                                     [{:id "out"}]
+                                                     {:operand operand})]
+                 (recur (rest instructions)
+                        (conj elements lt-block)
+                        (if current-node
+                          (conj connections
+                                {:source {:element (:id current-node) :port "out"}
+                                 :target {:element (:id lt-block) :port "in1"}})
+                          connections)
+                        lt-block
+                        (update position :x + 3)))
+
           ;; Default case - unknown instruction
           (do
             (println "Unknown IL instruction:" operator)
@@ -550,8 +576,8 @@
   [network element-id]
   (let [elements (filter #(not= (:id %) element-id) (:elements network))
         connections (filter #(and (not= (get-in % [:source :element]) element-id)
-                                 (not= (get-in % [:target :element]) element-id))
-                           (:connections network))]
+                                  (not= (get-in % [:target :element]) element-id))
+                            (:connections network))]
     (assoc network :elements elements :connections connections)))
 
 (defn add-connection
@@ -565,10 +591,10 @@
   "Remove a connection from an LD network"
   [network source-id source-port target-id target-port]
   (let [connections (filter #(not (and (= (get-in % [:source :element]) source-id)
-                                      (= (get-in % [:source :port]) source-port)
-                                      (= (get-in % [:target :element]) target-id)
-                                      (= (get-in % [:target :port]) target-port)))
-                           (:connections network))]
+                                       (= (get-in % [:source :port]) source-port)
+                                       (= (get-in % [:target :element]) target-id)
+                                       (= (get-in % [:target :port]) target-port)))
+                            (:connections network))]
     (assoc network :connections connections)))
 
 (defn update-element-position

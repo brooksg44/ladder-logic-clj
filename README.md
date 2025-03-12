@@ -52,6 +52,12 @@ ladder-logic-clj/
        (str/join \newline)))
 ```
 
+# Unix/Linux/macOS
+./ladder-logic.sh -s ladder-network.json -v
+
+# Windows
+ladder-logic.bat -s ladder-network.json -v
+
 ## Installation
 
 Clone the repository:
