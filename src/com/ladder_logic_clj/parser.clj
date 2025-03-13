@@ -1,10 +1,20 @@
 (ns com.ladder-logic-clj.parser
   "Provides functions for parsing IEC 61131-3 IL programs"
   (:require [clojure.string :as str]
-            [clojure.data.json :as json]))
+            [clojure.data.json :as json]
+            [clojure.spec.alpha :as s]
+            [com.ladder-logic-clj.specs :as specs]))
 
 ;; Data structures
 (defrecord ILInstruction [operator operand modifier])
+
+(defn validate-instruction
+  "Validate an IL instruction against specs"
+  [instruction]
+  (when-not (s/valid? ::specs/instruction instruction)
+    (println "Warning: Invalid IL instruction:" (pr-str instruction))
+    (s/explain ::specs/instruction instruction))
+  instruction)
 
 (defn parse-il-instruction
   "Parse a single IL instruction string into an ILInstruction record"
@@ -13,13 +23,13 @@
         parts (str/split trimmed #"\s+")
         operator-part (first parts)
         ;; Improved modifier parsing
-        [operator modifier] (if (str/includes? operator-part "(")
+        [operator modifier] (if (and operator-part (str/includes? operator-part "("))
                               (let [[_ op mod] (re-find #"(\w+)\((.*?)\)" operator-part)]
                                 [op (when (not-empty mod) mod)])
                               [operator-part nil])
         operand (when (> (count parts) 1)
                   (str/join " " (rest parts)))] ;; Join remaining parts for operands with spaces
-    (->ILInstruction operator operand modifier)))
+    (validate-instruction (->ILInstruction operator operand modifier))))
 
 (defn parse-il-program
   "Parse a complete IL program into a sequence of ILInstruction records.
@@ -28,7 +38,10 @@
   (let [lines (filter #(not (or (str/blank? %)
                                 (str/starts-with? (str/trim %) ";")))
                       (str/split-lines il-program))]
-    (mapv parse-il-instruction lines)))
+    (let [instructions (mapv parse-il-instruction lines)]
+      (when-not (s/valid? ::specs/instructions instructions)
+        (println "Warning: Invalid IL program structure"))
+      instructions)))
 
 (defn il-to-json
   "Convert IL instructions to JSON format"
@@ -48,7 +61,7 @@
   (let [parsed (json/read-str json-data :key-fn keyword)
         instructions (get-in parsed [:program :instructions])]
     (mapv (fn [instr]
-            (->ILInstruction (:operator instr) (:operand instr) (:modifier instr)))
+            (validate-instruction (->ILInstruction (:operator instr) (:operand instr) (:modifier instr))))
           instructions)))
 
 (defn save-il-to-file

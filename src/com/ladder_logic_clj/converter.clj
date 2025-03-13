@@ -7,13 +7,10 @@
             [com.ladder-logic-clj.parser :as parser]))
 
 ;; LD element structure
-;; In converter.clj, change your record definition to use :element-type instead of :type
 (defrecord LDElement [element-type id position inputs outputs properties]
   Object
   (toString [this]
     (str "#LDElement{:element-type \"" element-type "\", :id \"" id "\", :position " position "}")))
-
-;; And update all references to :type in your code to use :element-type instead
 
 ;; LD Network structure
 (defrecord LDNetwork [id elements connections]
@@ -69,10 +66,10 @@
 
 (defn create-function-block
   "Create a function block element for LD"
-  [type position inputs outputs properties]
+  [element-type position inputs outputs properties]
   (validate-element
    (->LDElement
-    type
+    element-type
     (generate-unique-id)
     position
     inputs
@@ -551,8 +548,14 @@
   "Convert JSON format back to LD network"
   [json-data]
   (let [parsed (json/read-str json-data :key-fn keyword)
+        ;; Handle converting :type to :element-type when loading from JSON
         elements (mapv (fn [elem]
-                         (map->LDElement elem))
+                         (let [element-with-correct-fields (if (:type elem)
+                                                             (-> elem
+                                                                 (assoc :element-type (:type elem))
+                                                                 (dissoc :type))
+                                                             elem)]
+                           (map->LDElement element-with-correct-fields)))
                        (:elements parsed))
         connections (:connections parsed)]
     (->LDNetwork (:id parsed) elements connections)))
