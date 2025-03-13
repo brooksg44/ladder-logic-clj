@@ -7,10 +7,13 @@
             [com.ladder-logic-clj.parser :as parser]))
 
 ;; LD element structure
-(defrecord LDElement [type id position inputs outputs properties]
+;; In converter.clj, change your record definition to use :element-type instead of :type
+(defrecord LDElement [element-type id position inputs outputs properties]
   Object
   (toString [this]
-    (str "#LDElement{:type \"" type "\", :id \"" id "\", :position " position "}")))
+    (str "#LDElement{:element-type \"" element-type "\", :id \"" id "\", :position " position "}")))
+
+;; And update all references to :type in your code to use :element-type instead
 
 ;; LD Network structure
 (defrecord LDNetwork [id elements connections]
@@ -471,7 +474,7 @@
         instructions
         (let [element (first current-elements)
               element-id (:id element)
-              element-type (:type element)]
+              element-type (:element-type element)]
           (if (contains? visited element-id)
             (recur (rest current-elements) visited instructions)
             (let [next-connections (get-connected-elements element-id "out" connections)

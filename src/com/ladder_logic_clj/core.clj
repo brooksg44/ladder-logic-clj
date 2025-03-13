@@ -7,7 +7,8 @@
             [com.ladder-logic-clj.specs :as specs]
             [com.ladder-logic-clj.parser :as parser]
             [com.ladder-logic-clj.converter :as converter]
-            [com.ladder-logic-clj.simulator :as simulator])
+            [com.ladder-logic-clj.simulator :as simulator]
+            [com.ladder-logic-clj.renderer :as renderer]) ; Added renderer namespace
   (:gen-class))
 
 ;; ---- CLI Interface ----
@@ -74,7 +75,7 @@
 
         ;; Regular simulation: just -s
         :else
-        {:options options :mode :simulate}):else
+        {:options options :mode :simulate}) :else
       {:exit-message (usage summary)})))
 
 (defn exit [status msg]
@@ -128,13 +129,10 @@
         state-map (atom {})]
 
     (println "Exporting LD network from" ld-file "to" export-file)
-    
-    ;; Import the renderer namespace
-    (require '[com.ladder-logic-clj.renderer :as renderer])
-    
+
     ;; Call export function
-    ((resolve 'renderer/export-network-as-image) ld-network variables state-map export-file)
-    
+    (renderer/export-network-as-image ld-network variables state-map export-file)
+
     (println "Export complete")))
 
 (defn -main

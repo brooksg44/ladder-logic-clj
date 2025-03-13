@@ -300,7 +300,7 @@
 (defn draw-element
   "Draw an LD element based on its type"
   [element state-map]
-  (let [type (:type element)
+  (let [type (:element-type element)
         id (:id element)
         x (get-in element [:position :x])
         y (get-in element [:position :y])

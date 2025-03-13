@@ -14,7 +14,7 @@
   "Create a variable with initial value"
   [name type initial-value]
   (let [variable {:name name
-                  :type type
+                  :element-type type
                   :value initial-value}]
     (if (s/valid? ::specs/variable-def variable)
       variable
@@ -42,7 +42,7 @@
   [element variables]
   (let [var-name (get-in element [:properties :variable])
         var-value (get-variable-value variables var-name)
-        negated? (= (:type element) "contact_negated")]
+        negated? (= (:element-type element) "contact_negated")]
     (if negated? (not var-value) var-value)))
 
 (defn evaluate-and
@@ -358,7 +358,7 @@
 (defn evaluate-element
   "Evaluate an LD element based on its type"
   [element connections elements-map variables state-map]
-  (let [element-type (:type element)]
+  (let [element-type (:element-type element)]
     (condp = element-type
       "contact" (evaluate-contact element variables)
       "contact_negated" (evaluate-contact element variables)
@@ -390,7 +390,7 @@
   (let [elements (:elements network)
         connections (:connections network)
         elements-map (reduce (fn [m elem] (assoc m (:id elem) elem)) {} elements)
-        coil-elements (filter #(or (= (:type %) "coil") (= (:type %) "coil_negated")) elements)]
+        coil-elements (filter #(or (= (:element-type %) "coil") (= (:element-type %) "coil_negated")) elements)]
 
     ;; Evaluate all coil elements and update variables
     (doseq [coil coil-elements]
@@ -402,7 +402,7 @@
           (let [in-element-id (get-in (first in-connections) [:source :element])
                 in-element (get elements-map in-element-id)
                 coil-value (evaluate-element in-element connections elements-map @variables state-map)
-                negated? (= (:type coil) "coil_negated")
+                negated? (= (:element-type coil) "coil_negated")
                 final-value (if negated? (not coil-value) coil-value)]
             ;; Update variable value
             (swap! variables set-variable-value coil-var final-value)))))
@@ -420,7 +420,7 @@
     ;; Update states for all elements
     (doseq [element elements]
       (let [element-id (:id element)
-            element-type (:type element)
+            element-type (:element-type element)
             element-result (try
                              (evaluate-element element connections elements-map @variables state-map)
                              (catch Exception e
@@ -467,70 +467,70 @@
   "Initialize variables for simulation with default values"
   []
   (atom [(create-variable "X1" "BOOL" false)
-             (create-variable "X2" "BOOL" false)
-             (create-variable "X3" "BOOL" false)
-             (create-variable "Y1" "BOOL" false)
-             (create-variable "Y2" "BOOL" false)
-             (create-variable "COUNT" "INT" 0)
-             (create-variable "TIMER" "TIME" 0)]))
-          
-          (defn initialize-state-map
-            "Initialize state map for simulation"
-            []
-            (atom {}))
-          
-          (defn run-simulation-cycle
-            "Run a single simulation cycle and return updated variables"
-            [network variables state-map]
-            (simulate-ld-network network variables state-map))
-          
-          (defn run-interactive-simulation
-            "Run an interactive simulation of an LD network"
-            [network & {:keys [with-visualization] :or {with-visualization false}}]
-            (let [variables (initialize-variables)
-                  state-map (initialize-state-map)]
-          
-              (println "Starting interactive simulation")
-              (println "Type 'exit' to quit, 'set VAR VALUE' to set a variable,")
-              (println "'visual' to toggle visualization, or press Enter to run one cycle.")
-          
+         (create-variable "X2" "BOOL" false)
+         (create-variable "X3" "BOOL" false)
+         (create-variable "Y1" "BOOL" false)
+         (create-variable "Y2" "BOOL" false)
+         (create-variable "COUNT" "INT" 0)
+         (create-variable "TIMER" "TIME" 0)]))
+
+(defn initialize-state-map
+  "Initialize state map for simulation"
+  []
+  (atom {}))
+
+(defn run-simulation-cycle
+  "Run a single simulation cycle and return updated variables"
+  [network variables state-map]
+  (simulate-ld-network network variables state-map))
+
+(defn run-interactive-simulation
+  "Run an interactive simulation of an LD network"
+  [network & {:keys [with-visualization] :or {with-visualization false}}]
+  (let [variables (initialize-variables)
+        state-map (initialize-state-map)]
+
+    (println "Starting interactive simulation")
+    (println "Type 'exit' to quit, 'set VAR VALUE' to set a variable,")
+    (println "'visual' to toggle visualization, or press Enter to run one cycle.")
+
                ;; Start visualization if requested
-              (when with-visualization
+    (when with-visualization
+      (require '[com.ladder-logic-clj.renderer :as renderer])
+      ((resolve 'renderer/render-network) network variables state-map))
+
+    (loop [visualize with-visualization]
+      (println "\nCurrent variables:")
+      (doseq [var @variables]
+        (println (str (:name var) " = " (:value var))))
+
+      (print "> ")
+      (flush)
+      (let [input (read-line)]
+        (cond
+          (= input "exit")
+          (println "Simulation ended.")
+
+          (= input "visual")
+          (do
+            (if visualize
+              (println "Visualization disabled")
+              (do
+                (println "Visualization enabled")
                 (require '[com.ladder-logic-clj.renderer :as renderer])
-                ((resolve 'renderer/render-network) network variables state-map))
-          
-              (loop [visualize with-visualization]
-                (println "\nCurrent variables:")
-                (doseq [var @variables]
-                  (println (str (:name var) " = " (:value var))))
-          
-                (print "> ")
-                (flush)
-                (let [input (read-line)]
-                  (cond
-                    (= input "exit")
-                    (println "Simulation ended.")
-          
-                    (= input "visual")
-                    (do
-                      (if visualize
-                        (println "Visualization disabled")
-                        (do
-                          (println "Visualization enabled")
-                          (require '[com.ladder-logic-clj.renderer :as renderer])
-                          ((resolve 'renderer/render-network) network variables state-map)))
-                      (recur (not visualize)))
-          
-                    (str/starts-with? input "set")
-                    (let [parts (str/split input #"\s+")
-                          var-name (second parts)
-                          var-value (read-string (nth parts 2 "false"))]
-                      (swap! variables set-variable-value var-name var-value)
-                      (recur visualize))
-          
-                    :else
-                    (do
-                      (if visualize
-                        (run-simulation-cycle-with-visualization network variables state-map)
-                        (simulate-ld-network network variables state-map))
-                      (recur visualize)))))))
+                ((resolve 'renderer/render-network) network variables state-map)))
+            (recur (not visualize)))
+
+          (str/starts-with? input "set")
+          (let [parts (str/split input #"\s+")
+                var-name (second parts)
+                var-value (read-string (nth parts 2 "false"))]
+            (swap! variables set-variable-value var-name var-value)
+            (recur visualize))
+
+          :else
+          (do
+            (if visualize
+              (run-simulation-cycle-with-visualization network variables state-map)
+              (simulate-ld-network network variables state-map))
+            (recur visualize)))))))

@@ -49,10 +49,10 @@
       (is (= 4 (count (:elements ld-network))))
 
       ;; Check element types
-      (is (= "contact" (get-in ld-network [:elements 0 :type])))
-      (is (= "contact" (get-in ld-network [:elements 1 :type])))
-      (is (= "and" (get-in ld-network [:elements 2 :type])))
-      (is (= "coil" (get-in ld-network [:elements 3 :type])))
+      (is (= "contact" (get-in ld-network [:elements 0 :element-type])))
+      (is (= "contact" (get-in ld-network [:elements 1 :element-type])))
+      (is (= "and" (get-in ld-network [:elements 2 :element-type])))
+      (is (= "coil" (get-in ld-network [:elements 3 :element-type])))
 
       ;; Check variables
       (is (= "X1" (get-in ld-network [:elements 0 :properties :variable])))
