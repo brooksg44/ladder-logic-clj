@@ -358,21 +358,46 @@
     (q/color-mode :rgb)
     (q/text-font (q/create-font "Arial" 12 true))
 
-    ;; Return initial state
+    ;; Return initial state - NO continuous update by default
     {:network network
      :variables variables
-     :state-map @state-map
+     :state-map state-map
      :dimensions [width height]}))
 
+;;(defn update-renderer
+;;  "Update function for Quil sketch - SIMPLIFIED"
+;;  [state]
+;;  ;; Just return the state unchanged
+;;  ;; The simulator will update the atoms that the renderer reads from
+;;  state)
+
 (defn update-renderer
-  "Update function for Quil sketch"
+  "Update function for Quil sketch - includes continuous simulation"
   [state]
   (let [network (:network state)
         variables (:variables state)
-        state-map (:state-map state)]
-    ;; This function can update the simulation state if you want animation
-    ;; For now, we just pass along the current state
-    state))
+        state-map (:state-map state)
+        current-time (System/currentTimeMillis)
+        last-update-time (:last-update-time state)]
+
+    ;; Run simulation at the specified interval if continuous update is enabled
+    (if (and (:continuous-update state)
+             (> (- current-time last-update-time) (:update-interval state)))
+      (try
+        ;; Call simulator function using explicit do to sequence operations
+        (do
+          ;; Run the simulation (ignoring the return value)
+          (require '[com.ladder-logic-clj.simulator :as simulator])
+          ((resolve 'simulator/run-simulation-cycle) network variables state-map)
+
+          ;; Return updated state with new timestamp
+          (assoc state :last-update-time current-time))
+        (catch Exception e
+          (println "Error in simulation update:" (.getMessage e))
+          state))
+      ;; No update needed, return original state
+      state)))
+
 
 (defn draw-renderer
   "Draw function for Quil sketch"
@@ -384,11 +409,34 @@
 
   ;; Draw connections
   (doseq [connection (:connections network)]
-    (draw-connection connection (:elements network) state-map))
+    (draw-connection connection (:elements network) @state-map))
 
   ;; Draw elements
   (doseq [element (:elements network)]
-    (draw-element element state-map)))
+    (draw-element element @state-map)))
+
+(defn key-pressed
+  "Handle key press events"
+  [state event]
+  (case (:key event)
+    ;; Space key toggles continuous update
+    :space (update state :continuous-update not)
+    ;; Enter key forces a single update
+    :enter (let [network (:network state)
+                 variables (:variables state)
+                 state-map (:state-map state)]
+             (try
+               ;; Perform a single simulation step
+               (do
+                 (require '[com.ladder-logic-clj.simulator :as simulator])
+                 ((resolve 'simulator/run-simulation-cycle) network variables state-map)
+                 ;; Return updated state with new timestamp
+                 (assoc state :last-update-time (System/currentTimeMillis)))
+               (catch Exception e
+                 (println "Error in manual simulation step:" (.getMessage e))
+                 state)))
+    ;; Default case - no change
+    state))
 
 (defn create-renderer
   "Create a Quil sketch to render an LD network"
@@ -404,8 +452,6 @@
      :draw draw-renderer
      :features [:keep-on-top]
      :middleware [m/fun-mode])))
-
-;; ---- Public API ----
 
 (defn render-network
   "Render an LD network with current state"

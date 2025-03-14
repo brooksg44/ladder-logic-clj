@@ -14,7 +14,7 @@
   "Create a variable with initial value"
   [name type initial-value]
   (let [variable {:name name
-                  :element-type type
+                  :type type
                   :value initial-value}]
     (if (s/valid? ::specs/variable-def variable)
       variable
@@ -488,16 +488,36 @@
   "Run an interactive simulation of an LD network"
   [network & {:keys [with-visualization] :or {with-visualization false}}]
   (let [variables (initialize-variables)
-        state-map (initialize-state-map)]
+        state-map (initialize-state-map)
+        ;; Setup for continuous updates
+        update-interval 200 ; 200ms between updates (5 fps)
+        continuous-updates (atom with-visualization)
+        last-update-time (atom (System/currentTimeMillis))]
 
     (println "Starting interactive simulation")
     (println "Type 'exit' to quit, 'set VAR VALUE' to set a variable,")
-    (println "'visual' to toggle visualization, or press Enter to run one cycle.")
+    (println "'continuous' to toggle continuous updates, or press Enter to run one cycle.")
 
-               ;; Start visualization if requested
+    ;; Start visualization if requested
     (when with-visualization
       (require '[com.ladder-logic-clj.renderer :as renderer])
       ((resolve 'renderer/render-network) network variables state-map))
+
+    ;; Start continuous update thread if visualization is enabled
+    (when with-visualization
+      (future
+        (try
+          (loop []
+            (when @continuous-updates
+              (let [current-time (System/currentTimeMillis)]
+                (when (> (- current-time @last-update-time) update-interval)
+                  ;; Run a simulation cycle
+                  (simulate-ld-network network variables state-map)
+                  (reset! last-update-time current-time))))
+            (Thread/sleep 50) ; Small sleep to avoid CPU hogging
+            (when with-visualization (recur)))
+          (catch Exception e
+            (println "Error in continuous simulation thread:" (.getMessage e))))))
 
     (loop [visualize with-visualization]
       (println "\nCurrent variables:")
@@ -509,7 +529,19 @@
       (let [input (read-line)]
         (cond
           (= input "exit")
-          (println "Simulation ended.")
+          (do
+            (reset! continuous-updates false) ; Stop the update thread
+            (println "Simulation ended."))
+
+          (= input "continuous")
+          (do
+            (swap! continuous-updates not)
+            (println (if @continuous-updates
+                       "Continuous updates enabled"
+                       "Continuous updates disabled"))
+            (when @continuous-updates
+              (reset! last-update-time (System/currentTimeMillis)))
+            (recur visualize))
 
           (= input "visual")
           (do
@@ -530,7 +562,7 @@
 
           :else
           (do
-            (if visualize
-              (run-simulation-cycle-with-visualization network variables state-map)
-              (simulate-ld-network network variables state-map))
+            ;; Run a single simulation cycle
+            (simulate-ld-network network variables state-map)
+            (reset! last-update-time (System/currentTimeMillis))
             (recur visualize)))))))
